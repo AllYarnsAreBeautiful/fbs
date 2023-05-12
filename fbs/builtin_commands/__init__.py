@@ -4,7 +4,7 @@ run `fbs <command>` on the command line. But you are also free to import them in
 your Python build script and execute them there.
 """
 from fbs import path, SETTINGS, activate_profile
-from fbs.builtin_commands._util import prompt_for_value, \
+from fbs.builtin_commands._util import prompt_for_value, is_valid_version, \
     require_existing_project, update_json, require_frozen_app, require_installer
 from fbs.cmdline import command
 from fbs.resources import copy_with_filtering
@@ -105,6 +105,14 @@ def freeze(debug=False):
         raise FbsError(
             "Could not find PyInstaller. Maybe you need to:\n"
             "    pip install PyInstaller==3.4"
+        )
+    version = SETTINGS['version']
+    if not is_valid_version(version):
+        raise FbsError(
+            'Invalid version detected in settings. It should be three\n'
+            'numbers separated by dots, such as "1.2.3". You have:\n\t"%s".\n'
+            'Usually, this can be fixed in src/build/settings/base.json.'
+            % version
         )
     # Import respective functions late to avoid circular import
     # fbs <-> fbs.freeze.X.
@@ -240,6 +248,8 @@ def repo():
     Generate files for automatic updates
     """
     require_existing_project()
+    if not _repo_is_supported():
+        raise FbsError('This command is not supported on this platform.')
     app_name = SETTINGS['app_name']
     pkg_name = app_name.lower()
     try:
@@ -296,7 +306,8 @@ def repo():
             gpg_key,
             extra={'wrap': False}
         )
-    elif is_fedora():
+    else:
+        assert is_fedora()
         from fbs.repo.fedora import create_repo_fedora
         create_repo_fedora()
         _LOG.info(
@@ -312,8 +323,9 @@ def repo():
             pkg_name, pkg_name, app_name, gpg_key[-8:].lower(),
             extra={'wrap': False}
         )
-    else:
-        raise FbsError('This command is not supported on this platform.')
+
+def _repo_is_supported():
+    return is_ubuntu() or is_arch_linux() or is_fedora()
 
 @command
 def upload():
@@ -402,14 +414,28 @@ def upload():
     _LOG.info(message, extra=extra)
 
 @command
-def release():
+def release(version=None):
     """
     Bump version and run clean,freeze,...,upload
     """
     require_existing_project()
-    version = SETTINGS['version']
-    next_version = _get_next_version(version)
-    release_version = prompt_for_value('Release version', default=next_version)
+    if version is None:
+        curr_version = SETTINGS['version']
+        next_version = _get_next_version(curr_version)
+        release_version = prompt_for_value(
+            'Release version', default=next_version
+        )
+    elif version == 'current':
+        release_version = SETTINGS['version']
+    else:
+        release_version = version
+    if not is_valid_version(release_version):
+        if not is_valid_version(version):
+            raise FbsError(
+                'The release version of your app is invalid. It should be '
+                'three\nnumbers separated by dots, such as "1.2.3". '
+                'You have: "%s".' % release_version
+            )
     activate_profile('release')
     SETTINGS['version'] = release_version
     log_level = _LOG.level
@@ -424,7 +450,8 @@ def release():
         if (is_windows() and _has_windows_codesigning_certificate()) or \
             is_arch_linux() or is_fedora():
             sign_installer()
-        repo()
+        if _repo_is_supported():
+            repo()
     finally:
         _LOG.setLevel(log_level)
     upload()

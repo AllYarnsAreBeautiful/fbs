@@ -41,13 +41,13 @@ def _get_name():
 
 def is_ubuntu():
     try:
-        return linux_distribution() in ('Ubuntu', 'Linux Mint')
+        return linux_distribution() in ('Ubuntu', 'Linux Mint', 'Pop!_OS')
     except FileNotFoundError:
         return False
 
 def is_arch_linux():
     try:
-        return linux_distribution() == 'Arch Linux'
+        return linux_distribution() in ('Arch Linux', 'Manjaro Linux')
     except FileNotFoundError:
         return False
 
