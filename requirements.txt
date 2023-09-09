@@ -1,5 +1,5 @@
 PyQt5==5.12.3
-PyInstaller==4.10
+PyInstaller==5.13.2
 rsa>=3.4.2
 boto3
 sentry-sdk>=0.6.6
