@@ -55,6 +55,6 @@ def _fix_sparkle_delta_updates():
         path('${freeze_dir}/Contents/Resources/base_library.zip')
     )
     symlink(
-        path('${freeze_dir}/Contents/Resources/base_library.zip',
+        path('${freeze_dir}/Contents/Resources/base_library.zip'),
         path('${freeze_dir}/Contents/MacOS/base_library.zip')
     )
